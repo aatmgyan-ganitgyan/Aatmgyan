@@ -57,6 +57,46 @@ router.post('/:testId/questions', verifyToken, async (req, res) => {
   }
 });
 
+// ── UPDATE QUESTION ─────────────────────────────
+router.put('/questions/:questionId', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Sirf teacher edit kar sakta hai!' });
+    }
+    const { questionId } = req.params;
+    const { question_text, opt_a, opt_b, opt_c, opt_d, correct_opt, explanation, marks, difficulty } = req.body;
+    const result = await pool.query(
+      `UPDATE questions SET 
+       question_text = $1, opt_a = $2, opt_b = $3, opt_c = $4, opt_d = $5,
+       correct_opt = $6, explanation = $7, marks = $8, difficulty = $9
+       WHERE id = $10 RETURNING *`,
+      [question_text, opt_a, opt_b, opt_c, opt_d, correct_opt, explanation, marks, difficulty, questionId]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Question nahi mila!' });
+    }
+    res.json({ message: 'Question update ho gaya! ✅', question: result.rows[0] });
+  } catch (error) {
+    console.error('Update question error:', error);
+    res.status(500).json({ error: 'Server error aaya!' });
+  }
+});
+
+// ── DELETE QUESTION ─────────────────────────────
+router.delete('/questions/:questionId', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Sirf teacher delete kar sakta hai!' });
+    }
+    const { questionId } = req.params;
+    await pool.query('DELETE FROM questions WHERE id = $1', [questionId]);
+    res.json({ message: 'Question delete ho gaya! 🗑️' });
+  } catch (error) {
+    console.error('Delete question error:', error);
+    res.status(500).json({ error: 'Server error aaya!' });
+  }
+});
+
 router.get('/my-tests', verifyToken, async (req, res) => {
   try {
     const result = await pool.query(
@@ -102,8 +142,7 @@ router.get('/:testId', verifyToken, async (req, res) => {
     const test = await pool.query('SELECT * FROM tests WHERE id = $1', [testId]);
     if (test.rows.length === 0) return res.status(404).json({ error: 'Test nahi mila!' });
     const questions = await pool.query(
-      `SELECT id, question_text, question_type, opt_a, opt_b, opt_c, opt_d, marks, difficulty
-       FROM questions WHERE test_id = $1`, [testId]
+      `SELECT * FROM questions WHERE test_id = $1`, [testId]
     );
     res.json({ test: test.rows[0], questions: questions.rows });
   } catch (error) {

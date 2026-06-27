@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import TeacherDashboard from './pages/TeacherDashboard';
+import ManageTest from './pages/ManageTest';
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -25,6 +26,11 @@ export default function App() {
         <Route path="/teacher" element={
           <ProtectedRoute>
             <TeacherDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/teacher/test/:testId" element={
+          <ProtectedRoute>
+            <ManageTest />
           </ProtectedRoute>
         } />
       </Routes>
