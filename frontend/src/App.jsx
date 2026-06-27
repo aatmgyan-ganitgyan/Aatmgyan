@@ -3,6 +3,9 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import TeacherDashboard from './pages/TeacherDashboard';
 import ManageTest from './pages/ManageTest';
+import StudentDashboard from './pages/StudentDashboard';
+import Exam from './pages/Exam';
+import Result from './pages/Result';
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -18,9 +21,7 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/student" element={
           <ProtectedRoute>
-            <div className="min-h-screen bg-[#0A0F1E] flex items-center justify-center">
-              <h1 className="text-white text-2xl">Student Dashboard 🪔</h1>
-            </div>
+            <StudentDashboard />
           </ProtectedRoute>
         } />
         <Route path="/teacher" element={
@@ -31,6 +32,16 @@ export default function App() {
         <Route path="/teacher/test/:testId" element={
           <ProtectedRoute>
             <ManageTest />
+          </ProtectedRoute>
+        } />
+        <Route path="/exam/:testId" element={
+          <ProtectedRoute>
+            <Exam />
+          </ProtectedRoute>
+        } />
+        <Route path="/result/:attemptId" element={
+          <ProtectedRoute>
+            <Result />
           </ProtectedRoute>
         } />
       </Routes>
