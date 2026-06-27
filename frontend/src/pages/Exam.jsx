@@ -22,20 +22,17 @@ export default function Exam() {
     const startExam = async () => {
       try {
         const res = await API.post('/attempts/start', { test_id: Number(testId) });
-        
         if (!res.data.questions || res.data.questions.length === 0) {
           setError('Is test mein koi question nahi hai! Teacher se kaho questions add karein.');
           setLoading(false);
           return;
         }
-
         setAttemptId(res.data.attempt.id);
         setTest(res.data.test);
         setQuestions(res.data.questions);
         setTimeLeft(res.data.test.duration * 60);
       } catch (err) {
-        const msg = err.response?.data?.error || 'Test shuru nahi hua!';
-        setError(msg);
+        setError(err.response?.data?.error || 'Test shuru nahi hua!');
       }
       setLoading(false);
     };
@@ -65,23 +62,28 @@ export default function Exam() {
 
   const currentQ = questions[currentIndex];
 
-  const selectAnswer = (opt) => {
-    setAnswers({ ...answers, [currentQ.id]: opt });
-  };
+  const selectAnswer = useCallback((opt) => {
+    setAnswers((prev) => ({ ...prev, [questions[currentIndex].id]: opt }));
+  }, [currentIndex, questions]);
 
-  const clearAnswer = () => {
-    const newAns = { ...answers };
-    delete newAns[currentQ.id];
-    setAnswers(newAns);
-  };
+  const clearAnswer = useCallback(() => {
+    setAnswers((prev) => {
+      const newAns = { ...prev };
+      delete newAns[questions[currentIndex].id];
+      return newAns;
+    });
+  }, [currentIndex, questions]);
 
-  const toggleMark = () => {
-    setMarked({ ...marked, [currentQ.id]: !marked[currentQ.id] });
-  };
+  const toggleMark = useCallback(() => {
+    setMarked((prev) => ({
+      ...prev,
+      [questions[currentIndex].id]: !prev[questions[currentIndex].id],
+    }));
+  }, [currentIndex, questions]);
 
   const goTo = (index) => setCurrentIndex(index);
-  const goNext = () => setCurrentIndex((i) => Math.min(i + 1, questions.length - 1));
-  const goPrev = () => setCurrentIndex((i) => Math.max(i - 1, 0));
+  const goNext = useCallback(() => setCurrentIndex((i) => Math.min(i + 1, questions.length - 1)), [questions.length]);
+  const goPrev = useCallback(() => setCurrentIndex((i) => Math.max(i - 1, 0)), []);
 
   const getStatus = (q) => {
     if (answers[q.id]) return 'answered';
@@ -104,6 +106,32 @@ export default function Exam() {
       setSubmitting(false);
     }
   }, [answers, questions, attemptId, navigate]);
+
+  // ── Keyboard Navigation ──────────────────────
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (!currentQ) return;
+      switch (e.key) {
+        case '1': selectAnswer('A'); break;
+        case '2': selectAnswer('B'); break;
+        case '3': selectAnswer('C'); break;
+        case '4': selectAnswer('D'); break;
+        case 'Backspace': clearAnswer(); break;
+        case 'm': case 'M': toggleMark(); break;
+        case 'ArrowRight': case 'Enter':
+          e.preventDefault();
+          goNext();
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          goPrev();
+          break;
+        default: break;
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [currentQ, selectAnswer, clearAnswer, toggleMark, goNext, goPrev]);
 
   if (loading) {
     return (
@@ -164,10 +192,16 @@ export default function Exam() {
             <p className="text-gray-500 text-sm mb-2">
               Question {currentIndex + 1} of {questions.length} • {currentQ.marks} marks
             </p>
+
+            {/* Keyboard hint */}
+            <p className="text-gray-600 text-xs mb-4">
+              ⌨️ 1/2/3/4 — option select • M — mark • ← → — navigate • Backspace — clear
+            </p>
+
             <h2 className="text-lg font-semibold mb-6">{currentQ.question_text}</h2>
 
             <div className="space-y-3 mb-8">
-              {['A', 'B', 'C', 'D'].map((opt) => (
+              {['A', 'B', 'C', 'D'].map((opt, idx) => (
                 <button
                   key={opt}
                   onClick={() => selectAnswer(opt)}
@@ -176,7 +210,8 @@ export default function Exam() {
                       ? 'bg-orange-400/10 border-orange-400 text-orange-300'
                       : 'bg-[#111827] border-[#1E2D45] hover:border-orange-400/40'}`}
                 >
-                  <span className="font-bold mr-2">{opt}.</span>
+                  <span className="font-bold mr-2 text-gray-500">{idx + 1}.</span>
+                  <span className="font-bold mr-1">{opt}.</span>
                   {currentQ[`opt_${opt.toLowerCase()}`]}
                 </button>
               ))}
