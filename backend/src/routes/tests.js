@@ -57,6 +57,19 @@ router.post('/:testId/questions', verifyToken, async (req, res) => {
   }
 });
 
+router.get('/my-tests', verifyToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM tests WHERE created_by = $1 ORDER BY created_at DESC`,
+      [req.user.id]
+    );
+    res.json({ tests: result.rows });
+  } catch (error) {
+    console.error('Get my tests error:', error);
+    res.status(500).json({ error: 'Server error aaya!' });
+  }
+});
+
 router.get('/available', verifyToken, async (req, res) => {
   try {
     const result = await pool.query(
