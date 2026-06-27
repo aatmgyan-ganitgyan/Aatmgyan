@@ -28,7 +28,7 @@ router.post('/create', verifyToken, async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
       [title, subject, cls, duration || 30, negative_marking || 'no', req.user.id]
     );
-    res.status(201).json({ message: 'Test create ho gaya! 🎯', test: result.rows[0] });
+    res.status(201).json({ message: 'Test create ho gaya!', test: result.rows[0] });
   } catch (error) {
     console.error('Create test error:', error);
     res.status(500).json({ error: 'Server error aaya!' });
@@ -50,14 +50,13 @@ router.post('/:testId/questions', verifyToken, async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
       [testId, question_text, question_type || 'mcq', opt_a, opt_b, opt_c, opt_d, correct_opt, explanation, marks || 4, difficulty || 'medium']
     );
-    res.status(201).json({ message: 'Question add ho gaya! ✅', question: result.rows[0] });
+    res.status(201).json({ message: 'Question add ho gaya!', question: result.rows[0] });
   } catch (error) {
     console.error('Add question error:', error);
     res.status(500).json({ error: 'Server error aaya!' });
   }
 });
 
-// ── UPDATE QUESTION ─────────────────────────────
 router.put('/questions/:questionId', verifyToken, async (req, res) => {
   try {
     if (req.user.role !== 'teacher') {
@@ -75,14 +74,13 @@ router.put('/questions/:questionId', verifyToken, async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Question nahi mila!' });
     }
-    res.json({ message: 'Question update ho gaya! ✅', question: result.rows[0] });
+    res.json({ message: 'Question update ho gaya!', question: result.rows[0] });
   } catch (error) {
     console.error('Update question error:', error);
     res.status(500).json({ error: 'Server error aaya!' });
   }
 });
 
-// ── DELETE QUESTION ─────────────────────────────
 router.delete('/questions/:questionId', verifyToken, async (req, res) => {
   try {
     if (req.user.role !== 'teacher') {
@@ -90,7 +88,7 @@ router.delete('/questions/:questionId', verifyToken, async (req, res) => {
     }
     const { questionId } = req.params;
     await pool.query('DELETE FROM questions WHERE id = $1', [questionId]);
-    res.json({ message: 'Question delete ho gaya! 🗑️' });
+    res.json({ message: 'Question delete ho gaya!' });
   } catch (error) {
     console.error('Delete question error:', error);
     res.status(500).json({ error: 'Server error aaya!' });
@@ -130,8 +128,53 @@ router.put('/:testId/publish', verifyToken, async (req, res) => {
     }
     const { testId } = req.params;
     await pool.query('UPDATE tests SET is_published = true WHERE id = $1', [testId]);
-    res.json({ message: 'Test publish ho gaya! 🚀' });
+    res.json({ message: 'Test publish ho gaya!' });
   } catch (error) {
+    res.status(500).json({ error: 'Server error aaya!' });
+  }
+});
+
+router.get('/:testId/analytics', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Sirf teacher dekh sakta hai!' });
+    }
+    const { testId } = req.params;
+
+    const statsRes = await pool.query(
+      `SELECT 
+         COUNT(*) as total_attempts,
+         ROUND(AVG(score::numeric), 1) as avg_score,
+         MAX(score) as max_score,
+         MIN(score) as min_score
+       FROM attempts 
+       WHERE test_id = $1 AND status = 'completed'`,
+      [testId]
+    );
+
+    const topperRes = await pool.query(
+      `SELECT u.name, a.score, a.submitted_at
+       FROM attempts a
+       JOIN users u ON a.student_id = u.id
+       WHERE a.test_id = $1 AND a.status = 'completed'
+       ORDER BY a.score DESC, a.submitted_at ASC
+       LIMIT 5`,
+      [testId]
+    );
+
+    const questionsRes = await pool.query(
+      `SELECT COUNT(*) as total_questions, COALESCE(SUM(marks), 0) as max_score
+       FROM questions WHERE test_id = $1`,
+      [testId]
+    );
+
+    res.json({
+      stats: statsRes.rows[0],
+      toppers: topperRes.rows,
+      meta: questionsRes.rows[0],
+    });
+  } catch (error) {
+    console.error('Analytics error:', error);
     res.status(500).json({ error: 'Server error aaya!' });
   }
 });
