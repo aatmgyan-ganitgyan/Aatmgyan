@@ -16,125 +16,110 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-// ── START ATTEMPT ──────────────────────────────
 router.post('/start', verifyToken, async (req, res) => {
   try {
     const { test_id } = req.body;
-    if (!test_id) return res.status(400).json({ error: 'Test ID zaroori hai!' });
+    const student_id = req.user.id;
 
-    // Check test exists
-    const test = await pool.query(
-      'SELECT * FROM tests WHERE id = $1 AND is_published = true', [test_id]
+    const testRes = await pool.query(
+      'SELECT * FROM tests WHERE id = $1 AND is_published = true',
+      [test_id]
     );
-    if (test.rows.length === 0) {
+    if (testRes.rows.length === 0)
       return res.status(404).json({ error: 'Test nahi mila!' });
-    }
+    const test = testRes.rows[0];
 
-    // Check already attempted
     const existing = await pool.query(
-      'SELECT * FROM attempts WHERE student_id = $1 AND test_id = $2 AND status = $3',
-      [req.user.id, test_id, 'ongoing']
+      `SELECT * FROM attempts WHERE test_id = $1 AND student_id = $2 AND status = 'in_progress'`,
+      [test_id, student_id]
     );
+
+    let attempt;
     if (existing.rows.length > 0) {
-      return res.json({ message: 'Test pehle se chal raha hai!', attempt: existing.rows[0] });
+      attempt = existing.rows[0];
+    } else {
+      const newAttempt = await pool.query(
+        `INSERT INTO attempts (test_id, student_id, status) VALUES ($1, $2, 'in_progress') RETURNING *`,
+        [test_id, student_id]
+      );
+      attempt = newAttempt.rows[0];
     }
 
-    // Create attempt
-    const result = await pool.query(
-      `INSERT INTO attempts (student_id, test_id, status)
-       VALUES ($1, $2, 'ongoing') RETURNING *`,
-      [req.user.id, test_id]
-    );
-
-    // Get questions (without correct answers)
     const questions = await pool.query(
-      `SELECT id, question_text, question_type, opt_a, opt_b, opt_c, opt_d, marks, difficulty
-       FROM questions WHERE test_id = $1`,
+      `SELECT id, question_text, question_type, opt_a, opt_b, opt_c, opt_d, marks
+       FROM questions WHERE test_id = $1 ORDER BY id`,
       [test_id]
     );
 
-    res.status(201).json({
-      message: 'Test shuru ho gaya! All the best! 🎯',
-      attempt: result.rows[0],
-      test: test.rows[0],
-      questions: questions.rows
-    });
+    res.json({ attempt, test, questions: questions.rows });
   } catch (error) {
     console.error('Start attempt error:', error);
     res.status(500).json({ error: 'Server error aaya!' });
   }
 });
 
-// ── SUBMIT ATTEMPT ─────────────────────────────
 router.post('/submit', verifyToken, async (req, res) => {
   try {
     const { attempt_id, responses } = req.body;
-    if (!attempt_id || !responses) {
-      return res.status(400).json({ error: 'Attempt ID aur responses zaroori hain!' });
-    }
 
-    // Get attempt
-    const attempt = await pool.query(
-      'SELECT * FROM attempts WHERE id = $1 AND student_id = $2',
-      [attempt_id, req.user.id]
+    const attemptRes = await pool.query(
+      `SELECT a.*, t.negative_marking FROM attempts a 
+       JOIN tests t ON a.test_id = t.id WHERE a.id = $1`,
+      [attempt_id]
     );
-    if (attempt.rows.length === 0) {
+    if (attemptRes.rows.length === 0)
       return res.status(404).json({ error: 'Attempt nahi mila!' });
-    }
+    const attempt = attemptRes.rows[0];
 
-    // Get correct answers
-    const questions = await pool.query(
-      'SELECT id, correct_opt, marks FROM questions WHERE test_id = $1',
-      [attempt.rows[0].test_id]
-    );
+    // Pehle purane responses delete karo (agar koi hai)
+    await pool.query('DELETE FROM responses WHERE attempt_id = $1', [attempt_id]);
 
-    // Calculate score
     let score = 0, correct = 0, wrong = 0, skipped = 0;
-    const negativeMarking = 0.25;
 
-    for (const question of questions.rows) {
-      const response = responses.find(r => r.question_id === question.id);
-      if (!response || !response.selected_opt) {
+    for (const r of responses) {
+      const qRes = await pool.query(
+        'SELECT * FROM questions WHERE id = $1',
+        [r.question_id]
+      );
+      if (qRes.rows.length === 0) continue;
+      const q = qRes.rows[0];
+
+      let is_correct = false;
+      let marks_obtained = 0;
+
+      if (!r.selected_opt) {
         skipped++;
-        await pool.query(
-          `INSERT INTO responses (attempt_id, question_id, selected_opt, is_correct)
-           VALUES ($1, $2, NULL, false)`,
-          [attempt_id, question.id]
-        );
-      } else if (response.selected_opt === question.correct_opt) {
+      } else if (r.selected_opt === q.correct_opt) {
+        is_correct = true;
+        marks_obtained = q.marks;
+        score += q.marks;
         correct++;
-        score += question.marks;
-        await pool.query(
-          `INSERT INTO responses (attempt_id, question_id, selected_opt, is_correct)
-           VALUES ($1, $2, $3, true)`,
-          [attempt_id, question.id, response.selected_opt]
-        );
       } else {
         wrong++;
-        score -= question.marks * negativeMarking;
-        await pool.query(
-          `INSERT INTO responses (attempt_id, question_id, selected_opt, is_correct)
-           VALUES ($1, $2, $3, false)`,
-          [attempt_id, question.id, response.selected_opt]
-        );
+        if (attempt.negative_marking === 'yes') {
+          marks_obtained = -(q.marks / 4);
+          score -= q.marks / 4;
+        }
       }
+
+      await pool.query(
+        `INSERT INTO responses (attempt_id, question_id, selected_opt, is_correct, marks_obtained)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [attempt_id, r.question_id, r.selected_opt || null, is_correct, marks_obtained]
+      );
     }
 
-    // Update attempt
+    const total = responses.length;
+    const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+
     await pool.query(
-      `UPDATE attempts SET 
-       submitted_at = NOW(), score = $1, correct = $2, 
-       wrong = $3, skipped = $4, status = 'completed'
-       WHERE id = $5`,
-      [score, correct, wrong, skipped, attempt_id]
+      `UPDATE attempts SET status = 'completed', score = $1, submitted_at = NOW() WHERE id = $2`,
+      [score, attempt_id]
     );
 
     res.json({
-      message: 'Test submit ho gaya! 🎉',
-      result: { score, correct, wrong, skipped,
-        total: questions.rows.length,
-        percentage: Math.round((score / (questions.rows.length * 4)) * 100)
-      }
+      message: 'Test submit ho gaya!',
+      result: { score, correct, wrong, skipped, total, percentage }
     });
   } catch (error) {
     console.error('Submit error:', error);
@@ -142,34 +127,19 @@ router.post('/submit', verifyToken, async (req, res) => {
   }
 });
 
-// ── GET RESULT ─────────────────────────────────
 router.get('/:attemptId/result', verifyToken, async (req, res) => {
   try {
     const { attemptId } = req.params;
-
-    const attempt = await pool.query(
-      'SELECT * FROM attempts WHERE id = $1 AND student_id = $2',
-      [attemptId, req.user.id]
-    );
-    if (attempt.rows.length === 0) {
-      return res.status(404).json({ error: 'Result nahi mila!' });
-    }
-
-    const responses = await pool.query(
-      `SELECT r.*, q.question_text, q.correct_opt, q.explanation,
-       q.opt_a, q.opt_b, q.opt_c, q.opt_d
-       FROM responses r
+    const result = await pool.query(
+      `SELECT r.*, q.question_text, q.opt_a, q.opt_b, q.opt_c, q.opt_d, 
+              q.correct_opt, q.explanation
+       FROM responses r 
        JOIN questions q ON r.question_id = q.id
-       WHERE r.attempt_id = $1`,
+       WHERE r.attempt_id = $1 ORDER BY q.id`,
       [attemptId]
     );
-
-    res.json({
-      attempt: attempt.rows[0],
-      responses: responses.rows
-    });
+    res.json({ responses: result.rows });
   } catch (error) {
-    console.error('Get result error:', error);
     res.status(500).json({ error: 'Server error aaya!' });
   }
 });

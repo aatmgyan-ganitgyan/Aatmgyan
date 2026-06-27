@@ -13,36 +13,42 @@ export default function Exam() {
   const [attemptId, setAttemptId] = useState(null);
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState({}); // { questionId: 'A' }
-  const [marked, setMarked] = useState({}); // { questionId: true }
-  const [timeLeft, setTimeLeft] = useState(0); // seconds
+  const [answers, setAnswers] = useState({});
+  const [marked, setMarked] = useState({});
+  const [timeLeft, setTimeLeft] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
-  // ── Start the test ──────────────────────────
   useEffect(() => {
     const startExam = async () => {
       try {
         const res = await API.post('/attempts/start', { test_id: Number(testId) });
+        
+        if (!res.data.questions || res.data.questions.length === 0) {
+          setError('Is test mein koi question nahi hai! Teacher se kaho questions add karein.');
+          setLoading(false);
+          return;
+        }
+
         setAttemptId(res.data.attempt.id);
         setTest(res.data.test);
         setQuestions(res.data.questions);
         setTimeLeft(res.data.test.duration * 60);
       } catch (err) {
-        setError(err.response?.data?.error || 'Test shuru nahi hua!');
+        const msg = err.response?.data?.error || 'Test shuru nahi hua!';
+        setError(msg);
       }
       setLoading(false);
     };
     startExam();
   }, [testId]);
 
-  // ── Timer countdown ──────────────────────────
   useEffect(() => {
     if (!test || timeLeft <= 0) return;
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          handleSubmit(true); // auto-submit
+          handleSubmit(true);
           return 0;
         }
         return prev - 1;
@@ -99,24 +105,24 @@ export default function Exam() {
     }
   }, [answers, questions, attemptId, navigate]);
 
-  // ── Loading / Error states ──────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0A0F1E] flex items-center justify-center">
-        <p className="text-gray-400">Test load ho raha hai...</p>
+        <p className="text-gray-400">Test load ho raha hai... 🪔</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#0A0F1E] flex flex-col items-center justify-center gap-4">
-        <p className="text-red-400">{error}</p>
+      <div className="min-h-screen bg-[#0A0F1E] flex flex-col items-center justify-center gap-4 px-6">
+        <div className="text-5xl">🪔</div>
+        <p className="text-red-400 text-center">{error}</p>
         <button
           onClick={() => navigate('/student')}
           className="bg-orange-400 text-[#0A0F1E] font-bold px-5 py-2 rounded-lg"
         >
-          ← Dashboard
+          ← Dashboard pe Jao
         </button>
       </div>
     );
@@ -125,7 +131,7 @@ export default function Exam() {
   if (!currentQ) {
     return (
       <div className="min-h-screen bg-[#0A0F1E] flex items-center justify-center">
-        <p className="text-gray-400">Is test mein koi question nahi hai.</p>
+        <p className="text-gray-400">Koi question nahi mila.</p>
       </div>
     );
   }
@@ -138,15 +144,14 @@ export default function Exam() {
   return (
     <div className="min-h-screen bg-[#0A0F1E] text-white flex flex-col">
 
-      {/* Top bar */}
       <div className="flex justify-between items-center px-6 py-4 border-b border-[#1E2D45]">
         <div>
           <h1 className="font-bold">{test.title}</h1>
           <p className="text-gray-500 text-xs">{test.subject} • Class {test.class}</p>
         </div>
         <div className={`text-2xl font-mono font-bold px-4 py-1 rounded-lg
-          ${isLowTime ? 'text-red-400 bg-red-500/10 animate-pulse' 
-            : isWarnTime ? 'text-yellow-400 bg-yellow-500/10' 
+          ${isLowTime ? 'text-red-400 bg-red-500/10 animate-pulse'
+            : isWarnTime ? 'text-yellow-400 bg-yellow-500/10'
             : 'text-orange-400 bg-orange-500/10'}`}>
           ⏱ {formatTime(timeLeft)}
         </div>
@@ -154,7 +159,6 @@ export default function Exam() {
 
       <div className="flex flex-1 overflow-hidden">
 
-        {/* Question Area */}
         <div className="flex-1 p-6 overflow-y-auto">
           <div className="max-w-2xl">
             <p className="text-gray-500 text-sm mb-2">
@@ -199,7 +203,7 @@ export default function Exam() {
               <button
                 onClick={goPrev}
                 disabled={currentIndex === 0}
-                className="bg-[#111827] border border-[#1E2D45] text-gray-300 
+                className="bg-[#111827] border border-[#1E2D45] text-gray-300
                          px-4 py-2 rounded-lg text-sm disabled:opacity-30 transition-colors"
               >
                 ← Prev
@@ -216,7 +220,6 @@ export default function Exam() {
           </div>
         </div>
 
-        {/* Sidebar — Question Palette */}
         <div className="w-72 border-l border-[#1E2D45] p-5 overflow-y-auto bg-[#0D1424]">
           <div className="grid grid-cols-5 gap-2 mb-6">
             {questions.map((q, i) => {
