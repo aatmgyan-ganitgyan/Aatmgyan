@@ -1,4 +1,49 @@
 const express = require('express');
+const nodemailer = require('nodemailer');
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+const sendScoreEmail = async (email, name, testTitle, score, correct, wrong, skipped, total, percentage) => {
+  const mailOptions = {
+    from: `"Aatmgyan 🪔" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: `Aatmgyan — ${testTitle} ka Result 🪔`,
+    html: `
+      <div style="font-family:Arial,sans-serif;background:#0A0F1E;color:#fff;padding:30px;border-radius:12px;max-width:480px;margin:auto">
+        <h2 style="color:#FB923C;text-align:center">🪔 Aatmgyan</h2>
+        <h3 style="text-align:center">${testTitle} — Result</h3>
+        <div style="background:#111827;border-radius:10px;padding:20px;text-align:center;margin:20px 0">
+          <p style="color:#9CA3AF;margin:0">Final Score</p>
+          <p style="font-size:48px;font-weight:bold;color:#FB923C;margin:8px 0">${score}</p>
+          <p style="color:#9CA3AF">${percentage}% Score</p>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:center;margin-bottom:20px">
+          <div style="background:#111827;border-radius:8px;padding:15px;text-align:center;flex:1">
+            <p style="color:#4ADE80;font-size:24px;font-weight:bold;margin:0">${correct}</p>
+            <p style="color:#9CA3AF;font-size:12px;margin:4px 0">Correct</p>
+          </div>
+          <div style="background:#111827;border-radius:8px;padding:15px;text-align:center;flex:1">
+            <p style="color:#F87171;font-size:24px;font-weight:bold;margin:0">${wrong}</p>
+            <p style="color:#9CA3AF;font-size:12px;margin:4px 0">Wrong</p>
+          </div>
+          <div style="background:#111827;border-radius:8px;padding:15px;text-align:center;flex:1">
+            <p style="color:#9CA3AF;font-size:24px;font-weight:bold;margin:0">${skipped}</p>
+            <p style="color:#9CA3AF;font-size:12px;margin:4px 0">Skipped</p>
+          </div>
+        </div>
+        <p style="color:#6B7280;font-size:12px;text-align:center">Total ${total} questions mein se ${correct} sahi diye!</p>
+        <p style="color:#6B7280;font-size:11px;text-align:center;margin-top:20px">Jaano. Seekho. Badho. 🪔<br>aatmgyan.vercel.app</p>
+      </div>
+    `,
+  };
+  await transporter.sendMail(mailOptions);
+};
 const router = express.Router();
 const pool = require('../config/db');
 const jwt = require('jsonwebtoken');
@@ -185,7 +230,16 @@ router.post('/submit', verifyToken, async (req, res) => {
         newBadges.push('week_streak');
       }
     }
-
+// Email bhejo
+try {
+  const studentRes = await pool.query('SELECT email, name FROM users WHERE id = $1', [student_id]);
+  const student = studentRes.rows[0];
+  const testTitleRes = await pool.query('SELECT title FROM tests WHERE id = $1', [attempt.test_id]);
+  const testTitle = testTitleRes.rows[0].title;
+  await sendScoreEmail(student.email, student.name, testTitle, score, correct, wrong, skipped, total, percentage);
+} catch (emailErr) {
+  console.error('Email error:', emailErr);
+}
     res.json({
       message: 'Test submit ho gaya!',
       result: { score, correct, wrong, skipped, total, percentage },
