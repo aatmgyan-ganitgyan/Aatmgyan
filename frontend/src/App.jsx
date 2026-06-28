@@ -6,6 +6,7 @@ import ManageTest from './pages/ManageTest';
 import StudentDashboard from './pages/StudentDashboard';
 import Exam from './pages/Exam';
 import Result from './pages/Result';
+import Leaderboard from './pages/Leaderboard';
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -20,29 +21,22 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/student" element={
-          <ProtectedRoute>
-            <StudentDashboard />
-          </ProtectedRoute>
+          <ProtectedRoute><StudentDashboard /></ProtectedRoute>
         } />
         <Route path="/teacher" element={
-          <ProtectedRoute>
-            <TeacherDashboard />
-          </ProtectedRoute>
+          <ProtectedRoute><TeacherDashboard /></ProtectedRoute>
         } />
         <Route path="/teacher/test/:testId" element={
-          <ProtectedRoute>
-            <ManageTest />
-          </ProtectedRoute>
+          <ProtectedRoute><ManageTest /></ProtectedRoute>
         } />
         <Route path="/exam/:testId" element={
-          <ProtectedRoute>
-            <Exam />
-          </ProtectedRoute>
+          <ProtectedRoute><Exam /></ProtectedRoute>
         } />
         <Route path="/result/:attemptId" element={
-          <ProtectedRoute>
-            <Result />
-          </ProtectedRoute>
+          <ProtectedRoute><Result /></ProtectedRoute>
+        } />
+        <Route path="/leaderboard" element={
+          <ProtectedRoute><Leaderboard /></ProtectedRoute>
         } />
       </Routes>
     </BrowserRouter>

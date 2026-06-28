@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 const authRoutes = require('./src/routes/auth');
 const testRoutes = require('./src/routes/tests');
 const attemptRoutes = require('./src/routes/attempts');
+const userRoutes = require('./src/routes/users');
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use('/api/', limiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/tests', testRoutes);
 app.use('/api/attempts', attemptRoutes);
+app.use('/api/users', userRoutes);
 
 app.get('/', (req, res) => {
   res.json({
