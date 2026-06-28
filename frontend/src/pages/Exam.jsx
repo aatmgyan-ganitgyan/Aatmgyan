@@ -18,6 +18,7 @@ export default function Exam() {
   const [marked, setMarked] = useState({});
   const [timeLeft, setTimeLeft] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [showPalette, setShowPalette] = useState(false);
 
   useEffect(() => {
     const startExam = async () => {
@@ -82,7 +83,10 @@ export default function Exam() {
     }));
   }, [currentIndex, questions]);
 
-  const goTo = (index) => setCurrentIndex(index);
+  const goTo = (index) => {
+    setCurrentIndex(index);
+    setShowPalette(false); // mobile pe palette band karo after selection
+  };
   const goNext = useCallback(() => setCurrentIndex((i) => Math.min(i + 1, questions.length - 1)), [questions.length]);
   const goPrev = useCallback(() => setCurrentIndex((i) => Math.max(i - 1, 0)), []);
 
@@ -101,7 +105,7 @@ export default function Exam() {
         selected_opt: answers[q.id] || null,
       }));
       const res = await API.post('/attempts/submit', { attempt_id: attemptId, responses });
-      navigate(`/result/${attemptId}`, { state: { result: res.data.result, gamification: res.data.gamification } });
+      navigate(`/result/${attemptId}`, { state: res.data.result });
     } catch (err) {
       setError(err.response?.data?.error || 'Submit nahi hua!');
       setSubmitting(false);
@@ -172,12 +176,23 @@ export default function Exam() {
   return (
     <div className="min-h-screen bg-[#0A0F1E] text-white flex flex-col">
 
-      <div className="flex justify-between items-center px-6 py-4 border-b border-[#1E2D45]">
-        <div>
-          <h1 className="font-bold">{test.title}</h1>
+      {/* ── HEADER ── */}
+      <div className="flex justify-between items-center px-4 py-3 border-b border-[#1E2D45] gap-2">
+        <div className="min-w-0 flex-1">
+          <h1 className="font-bold text-sm sm:text-base truncate">{test.title}</h1>
           <p className="text-gray-500 text-xs">{test.subject} • Class {test.class}</p>
         </div>
-        <div className={`text-2xl font-mono font-bold px-4 py-1 rounded-lg
+
+        {/* Mobile: palette toggle button */}
+        <button
+          onClick={() => setShowPalette(!showPalette)}
+          className="md:hidden flex items-center gap-1 bg-[#111827] border border-[#1E2D45]
+                     text-gray-300 text-xs px-3 py-1.5 rounded-lg"
+        >
+          📋 {answeredCount}/{questions.length}
+        </button>
+
+        <div className={`text-xl sm:text-2xl font-mono font-bold px-3 py-1 rounded-lg shrink-0
           ${isLowTime ? 'text-red-400 bg-red-500/10 animate-pulse'
             : isWarnTime ? 'text-yellow-400 bg-yellow-500/10'
             : 'text-orange-400 bg-orange-500/10'}`}>
@@ -185,23 +200,66 @@ export default function Exam() {
         </div>
       </div>
 
+      {/* ── MOBILE PALETTE DRAWER ── */}
+      {showPalette && (
+        <div className="md:hidden bg-[#0D1424] border-b border-[#1E2D45] px-4 py-4">
+          <div className="flex flex-wrap gap-2 mb-4">
+            {questions.map((q, i) => {
+              const status = getStatus(q);
+              return (
+                <button
+                  key={q.id}
+                  onClick={() => goTo(i)}
+                  className={`h-9 w-9 rounded-md text-sm font-semibold flex items-center justify-center
+                    transition-colors
+                    ${i === currentIndex ? 'ring-2 ring-orange-400' : ''}
+                    ${status === 'answered' ? 'bg-green-500/20 text-green-400 border border-green-500/40' : ''}
+                    ${status === 'marked' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40' : ''}
+                    ${status === 'unvisited' ? 'bg-[#111827] text-gray-400 border border-[#1E2D45]' : ''}
+                  `}
+                >
+                  {i + 1}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex gap-4 text-xs mb-4">
+            <span className="text-green-400">✓ Answered: {answeredCount}</span>
+            <span className="text-yellow-400">★ Marked: {markedCount}</span>
+            <span className="text-gray-400">○ Left: {questions.length - answeredCount}</span>
+          </div>
+          <button
+            onClick={() => handleSubmit(false)}
+            disabled={submitting}
+            className="w-full bg-green-500 hover:bg-green-600 text-white font-bold
+                     py-2.5 rounded-lg transition-colors disabled:opacity-50 text-sm"
+          >
+            {submitting ? 'Submit ho raha hai...' : 'Submit Test'}
+          </button>
+        </div>
+      )}
+
+      {/* ── MAIN CONTENT ── */}
       <div className="flex flex-1 overflow-hidden">
 
-        <div className="flex-1 p-6 overflow-y-auto">
+        {/* ── QUESTION AREA ── */}
+        <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
           <div className="max-w-2xl">
-            <p className="text-gray-500 text-sm mb-2">
+
+            <p className="text-gray-500 text-sm mb-1">
               Question {currentIndex + 1} of {questions.length} • {currentQ.marks} marks
             </p>
 
-            <p className="text-gray-600 text-xs mb-4">
+            {/* Keyboard hint — desktop only */}
+            <p className="hidden md:block text-gray-600 text-xs mb-4">
               ⌨️ 1/2/3/4 — option select • M — mark • ← → — navigate • Backspace — clear
             </p>
 
-            <h2 className="text-lg font-semibold mb-6">
+            <h2 className="text-base sm:text-lg font-semibold mb-5 leading-relaxed">
               <MathText text={currentQ.question_text} />
             </h2>
 
-            <div className="space-y-3 mb-8">
+            <div className="space-y-3 mb-6">
               {['A', 'B', 'C', 'D'].map((opt, idx) => (
                 <button
                   key={opt}
@@ -209,7 +267,7 @@ export default function Exam() {
                   className={`w-full text-left px-4 py-3 rounded-lg border transition-colors
                     ${answers[currentQ.id] === opt
                       ? 'bg-orange-400/10 border-orange-400 text-orange-300'
-                      : 'bg-[#111827] border-[#1E2D45] hover:border-orange-400/40'}`}
+                      : 'bg-[#111827] border-[#1E2D45] active:border-orange-400/40'}`}
                 >
                   <span className="font-bold mr-2 text-gray-500">{idx + 1}.</span>
                   <span className="font-bold mr-1">{opt}.</span>
@@ -218,22 +276,23 @@ export default function Exam() {
               ))}
             </div>
 
-            <div className="flex flex-wrap gap-3">
+            {/* Bottom controls */}
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={clearAnswer}
                 className="bg-[#111827] border border-[#1E2D45] hover:border-gray-400
-                         text-gray-300 px-4 py-2 rounded-lg text-sm transition-colors"
+                         text-gray-300 px-3 py-2 rounded-lg text-sm transition-colors"
               >
-                Clear Answer
+                Clear
               </button>
               <button
                 onClick={toggleMark}
-                className={`border px-4 py-2 rounded-lg text-sm transition-colors
+                className={`border px-3 py-2 rounded-lg text-sm transition-colors
                   ${marked[currentQ.id]
                     ? 'bg-yellow-500/10 border-yellow-500/40 text-yellow-400'
-                    : 'bg-[#111827] border-[#1E2D45] text-gray-300 hover:border-yellow-400/40'}`}
+                    : 'bg-[#111827] border-[#1E2D45] text-gray-300'}`}
               >
-                {marked[currentQ.id] ? '★ Marked' : '☆ Mark for Review'}
+                {marked[currentQ.id] ? '★ Marked' : '☆ Mark'}
               </button>
               <div className="flex-1" />
               <button
@@ -256,7 +315,8 @@ export default function Exam() {
           </div>
         </div>
 
-        <div className="w-72 border-l border-[#1E2D45] p-5 overflow-y-auto bg-[#0D1424]">
+        {/* ── DESKTOP SIDEBAR PALETTE ── */}
+        <div className="hidden md:flex w-72 border-l border-[#1E2D45] p-5 overflow-y-auto bg-[#0D1424] flex-col">
           <div className="grid grid-cols-5 gap-2 mb-6">
             {questions.map((q, i) => {
               const status = getStatus(q);
