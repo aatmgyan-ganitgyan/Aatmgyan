@@ -25,7 +25,6 @@ export default function Exam() {
     const startExam = async () => {
       try {
         if (isPreview) {
-          // Preview mode — sirf test data load karo, attempt mat banao
           const res = await API.get(`/tests/${testId}`);
           if (!res.data.questions || res.data.questions.length === 0) {
             setError('Is test mein koi question nahi hai! Pehle questions add karo.');
@@ -36,7 +35,6 @@ export default function Exam() {
           setQuestions(res.data.questions);
           setTimeLeft(res.data.test.duration * 60);
         } else {
-          // Normal mode — attempt banao
           const res = await API.post('/attempts/start', { test_id: Number(testId) });
           if (!res.data.questions || res.data.questions.length === 0) {
             setError('Is test mein koi question nahi hai!');
@@ -192,7 +190,6 @@ export default function Exam() {
   return (
     <div className="min-h-screen bg-[#0A0F1E] text-white flex flex-col">
 
-      {/* Preview Banner */}
       {isPreview && (
         <div className="bg-orange-400/10 border-b border-orange-400/30 px-6 py-2 text-center">
           <p className="text-orange-400 text-sm font-semibold">
@@ -215,14 +212,13 @@ export default function Exam() {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-
         <div className="flex-1 p-6 overflow-y-auto">
           <div className="max-w-2xl">
             <p className="text-gray-500 text-sm mb-2">
               Question {currentIndex + 1} of {questions.length} • {currentQ.marks} marks
             </p>
             <p className="text-gray-600 text-xs mb-4">
-              ⌨️ A/B/C/D — option select • M — mark • ← → — navigate • Backspace — clear
+              ⌨️ 1=A, 2=B, 3=C, 4=D • M — mark • ← → — navigate • Backspace — clear
             </p>
 
             <h2 className="text-lg font-semibold mb-6">
