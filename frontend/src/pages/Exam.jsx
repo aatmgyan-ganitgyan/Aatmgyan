@@ -218,8 +218,9 @@ export default function Exam() {
               Question {currentIndex + 1} of {questions.length} • {currentQ.marks} marks
             </p>
             <p className="text-gray-600 text-xs mb-4">
-              ⌨️ 1=A, 2=B, 3=C, 4=D • M — mark • ← → — navigate • Backspace — clear
-            </p>
+              ⌨️ <p className="text-gray-600 text-xs mb-4">
+                ⌨️ [1=A] [2=B] [3=C] [4=D] &nbsp;•&nbsp; [M = Mark for Review] &nbsp;•&nbsp; [← → Navigate] &nbsp;•&nbsp; [Backspace = Clear]
+              </p>
 
             <h2 className="text-lg font-semibold mb-6">
               <MathText text={currentQ.question_text} />
