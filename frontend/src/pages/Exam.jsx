@@ -222,7 +222,7 @@ export default function Exam() {
               Question {currentIndex + 1} of {questions.length} • {currentQ.marks} marks
             </p>
             <p className="text-gray-600 text-xs mb-4">
-              ⌨️ 1/2/3/4 — option select • M — mark • ← → — navigate • Backspace — clear
+              ⌨️ A/B/C/D — option select • M — mark • ← → — navigate • Backspace — clear
             </p>
 
             <h2 className="text-lg font-semibold mb-6">
