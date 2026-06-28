@@ -34,8 +34,8 @@ function SymbolPad({ onInsert }) {
   return (
     <div className="bg-[#0A0F1E] border border-[#1E2D45] rounded-lg p-3 mb-3">
       <p className="text-gray-500 text-xs mb-2">
-        🧮 Symbol click karo — cursor pe insert ho jaayega। 
-        Math ke liye <span className="text-orange-400">$...$</span> ke andar likho, 
+        🧮 Symbol click karo — cursor pe insert ho jaayega।
+        Math ke liye <span className="text-orange-400">$...$</span> ke andar likho,
         jaise: <span className="text-orange-400">$\sin 30°$</span>
       </p>
       <div className="flex flex-wrap gap-1.5">
@@ -107,14 +107,11 @@ export default function ManageTest() {
   const insertSymbol = (symbol) => {
     const ref = fieldRefs[activeField]?.current;
     if (!ref) return;
-
     const start = ref.selectionStart;
     const end = ref.selectionEnd;
     const current = form[activeField] || '';
     const newValue = current.substring(0, start) + symbol + current.substring(end);
-
     setForm({ ...form, [activeField]: newValue });
-
     setTimeout(() => {
       ref.focus();
       ref.setSelectionRange(start + symbol.length, start + symbol.length);
@@ -203,6 +200,7 @@ export default function ManageTest() {
     <div className="min-h-screen bg-[#0A0F1E] text-white px-6 py-8">
       <div className="max-w-4xl mx-auto">
 
+        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <Link to="/teacher" className="text-gray-500 text-sm hover:text-orange-400">
@@ -216,12 +214,25 @@ export default function ManageTest() {
               </span>
             </p>
           </div>
-          {!test.is_published && (
-            <button onClick={handlePublish}
-              className="bg-green-500 hover:bg-green-600 text-white font-bold px-5 py-3 rounded-lg transition-colors">
-              🚀 Publish Karo
+          <div className="flex gap-3">
+            <button
+              onClick={() => navigate(`/exam/${testId}?preview=true`)}
+              className="bg-[#111827] border border-[#1E2D45] hover:border-orange-400
+                       text-gray-300 hover:text-orange-400 font-bold
+                       px-5 py-3 rounded-lg transition-colors"
+            >
+              👁 Preview
             </button>
-          )}
+            {!test.is_published && (
+              <button
+                onClick={handlePublish}
+                className="bg-green-500 hover:bg-green-600 text-white font-bold
+                         px-5 py-3 rounded-lg transition-colors"
+              >
+                🚀 Publish Karo
+              </button>
+            )}
+          </div>
         </div>
 
         {success && <div className="bg-green-500/10 border border-green-500/30 text-green-400 rounded-lg p-3 mb-4 text-sm">{success}</div>}
@@ -288,9 +299,7 @@ export default function ManageTest() {
             <h3 className="text-lg font-bold mb-4">
               {editingId ? 'Question Edit Karo' : 'Naya Question'}
             </h3>
-
             <SymbolPad onInsert={insertSymbol} />
-
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="text-gray-400 text-sm mb-1 block">Question</label>
@@ -307,7 +316,6 @@ export default function ManageTest() {
                   required
                 />
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 {['a', 'b', 'c', 'd'].map((l) => (
                   <div key={l}>
@@ -326,7 +334,6 @@ export default function ManageTest() {
                   </div>
                 ))}
               </div>
-
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="text-gray-400 text-sm mb-1 block">Correct Answer</label>
@@ -360,7 +367,6 @@ export default function ManageTest() {
                   </select>
                 </div>
               </div>
-
               <div>
                 <label className="text-gray-400 text-sm mb-1 block">Explanation (optional)</label>
                 <textarea
@@ -375,7 +381,6 @@ export default function ManageTest() {
                            focus:outline-none focus:border-orange-400"
                 />
               </div>
-
               <button
                 type="submit"
                 disabled={loading}

@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import API from '../api/axios';
 import MathText from '../components/MathText';
 
 export default function Exam() {
   const { testId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isPreview = searchParams.get('preview') === 'true';
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -18,28 +20,41 @@ export default function Exam() {
   const [marked, setMarked] = useState({});
   const [timeLeft, setTimeLeft] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [showPalette, setShowPalette] = useState(false);
 
   useEffect(() => {
     const startExam = async () => {
       try {
-        const res = await API.post('/attempts/start', { test_id: Number(testId) });
-        if (!res.data.questions || res.data.questions.length === 0) {
-          setError('Is test mein koi question nahi hai! Teacher se kaho questions add karein.');
-          setLoading(false);
-          return;
+        if (isPreview) {
+          // Preview mode — sirf test data load karo, attempt mat banao
+          const res = await API.get(`/tests/${testId}`);
+          if (!res.data.questions || res.data.questions.length === 0) {
+            setError('Is test mein koi question nahi hai! Pehle questions add karo.');
+            setLoading(false);
+            return;
+          }
+          setTest(res.data.test);
+          setQuestions(res.data.questions);
+          setTimeLeft(res.data.test.duration * 60);
+        } else {
+          // Normal mode — attempt banao
+          const res = await API.post('/attempts/start', { test_id: Number(testId) });
+          if (!res.data.questions || res.data.questions.length === 0) {
+            setError('Is test mein koi question nahi hai!');
+            setLoading(false);
+            return;
+          }
+          setAttemptId(res.data.attempt.id);
+          setTest(res.data.test);
+          setQuestions(res.data.questions);
+          setTimeLeft(res.data.test.duration * 60);
         }
-        setAttemptId(res.data.attempt.id);
-        setTest(res.data.test);
-        setQuestions(res.data.questions);
-        setTimeLeft(res.data.test.duration * 60);
       } catch (err) {
         setError(err.response?.data?.error || 'Test shuru nahi hua!');
       }
       setLoading(false);
     };
     startExam();
-  }, [testId]);
+  }, [testId, isPreview]);
 
   useEffect(() => {
     if (!test || timeLeft <= 0) return;
@@ -47,7 +62,7 @@ export default function Exam() {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          handleSubmit(true);
+          if (!isPreview) handleSubmit(true);
           return 0;
         }
         return prev - 1;
@@ -83,10 +98,7 @@ export default function Exam() {
     }));
   }, [currentIndex, questions]);
 
-  const goTo = (index) => {
-    setCurrentIndex(index);
-    setShowPalette(false); // mobile pe palette band karo after selection
-  };
+  const goTo = (index) => setCurrentIndex(index);
   const goNext = useCallback(() => setCurrentIndex((i) => Math.min(i + 1, questions.length - 1)), [questions.length]);
   const goPrev = useCallback(() => setCurrentIndex((i) => Math.max(i - 1, 0)), []);
 
@@ -97,6 +109,10 @@ export default function Exam() {
   };
 
   const handleSubmit = useCallback(async (auto = false) => {
+    if (isPreview) {
+      navigate(`/teacher/test/${testId}`);
+      return;
+    }
     if (!auto && !window.confirm('Pakka test submit karna hai?')) return;
     setSubmitting(true);
     try {
@@ -105,12 +121,12 @@ export default function Exam() {
         selected_opt: answers[q.id] || null,
       }));
       const res = await API.post('/attempts/submit', { attempt_id: attemptId, responses });
-      navigate(`/result/${attemptId}`, { state: res.data.result });
+      navigate(`/result/${attemptId}`, { state: { result: res.data.result, gamification: res.data.gamification } });
     } catch (err) {
       setError(err.response?.data?.error || 'Submit nahi hua!');
       setSubmitting(false);
     }
-  }, [answers, questions, attemptId, navigate]);
+  }, [answers, questions, attemptId, navigate, isPreview, testId]);
 
   useEffect(() => {
     const handleKey = (e) => {
@@ -140,7 +156,7 @@ export default function Exam() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0A0F1E] flex items-center justify-center">
-        <p className="text-gray-400">Test load ho raha hai... 🪔</p>
+        <p className="text-gray-400">{isPreview ? 'Preview load ho raha hai... 👁' : 'Test load ho raha hai... 🪔'}</p>
       </div>
     );
   }
@@ -151,10 +167,10 @@ export default function Exam() {
         <div className="text-5xl">🪔</div>
         <p className="text-red-400 text-center">{error}</p>
         <button
-          onClick={() => navigate('/student')}
+          onClick={() => navigate(isPreview ? `/teacher/test/${testId}` : '/student')}
           className="bg-orange-400 text-[#0A0F1E] font-bold px-5 py-2 rounded-lg"
         >
-          ← Dashboard pe Jao
+          ← Wapas Jao
         </button>
       </div>
     );
@@ -176,23 +192,21 @@ export default function Exam() {
   return (
     <div className="min-h-screen bg-[#0A0F1E] text-white flex flex-col">
 
-      {/* ── HEADER ── */}
-      <div className="flex justify-between items-center px-4 py-3 border-b border-[#1E2D45] gap-2">
-        <div className="min-w-0 flex-1">
-          <h1 className="font-bold text-sm sm:text-base truncate">{test.title}</h1>
+      {/* Preview Banner */}
+      {isPreview && (
+        <div className="bg-orange-400/10 border-b border-orange-400/30 px-6 py-2 text-center">
+          <p className="text-orange-400 text-sm font-semibold">
+            👁 PREVIEW MODE — Yeh sirf preview hai, koi attempt save nahi hoga
+          </p>
+        </div>
+      )}
+
+      <div className="flex justify-between items-center px-6 py-4 border-b border-[#1E2D45]">
+        <div>
+          <h1 className="font-bold">{test.title}</h1>
           <p className="text-gray-500 text-xs">{test.subject} • Class {test.class}</p>
         </div>
-
-        {/* Mobile: palette toggle button */}
-        <button
-          onClick={() => setShowPalette(!showPalette)}
-          className="sm:hidden flex items-center gap-1 bg-[#111827] border border-[#1E2D45]
-                     text-gray-300 text-xs px-3 py-1.5 rounded-lg"
-        >
-          📋 {answeredCount}/{questions.length}
-        </button>
-
-        <div className={`text-xl sm:text-2xl font-mono font-bold px-3 py-1 rounded-lg shrink-0
+        <div className={`text-2xl font-mono font-bold px-4 py-1 rounded-lg
           ${isLowTime ? 'text-red-400 bg-red-500/10 animate-pulse'
             : isWarnTime ? 'text-yellow-400 bg-yellow-500/10'
             : 'text-orange-400 bg-orange-500/10'}`}>
@@ -200,66 +214,22 @@ export default function Exam() {
         </div>
       </div>
 
-      {/* ── MOBILE PALETTE DRAWER ── */}
-      {showPalette && (
-        <div className="sm:hidden bg-[#0D1424] border-b border-[#1E2D45] px-4 py-4">
-          <div className="flex flex-wrap gap-2 mb-4">
-            {questions.map((q, i) => {
-              const status = getStatus(q);
-              return (
-                <button
-                  key={q.id}
-                  onClick={() => goTo(i)}
-                  className={`h-9 w-9 rounded-md text-sm font-semibold flex items-center justify-center
-                    transition-colors
-                    ${i === currentIndex ? 'ring-2 ring-orange-400' : ''}
-                    ${status === 'answered' ? 'bg-green-500/20 text-green-400 border border-green-500/40' : ''}
-                    ${status === 'marked' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40' : ''}
-                    ${status === 'unvisited' ? 'bg-[#111827] text-gray-400 border border-[#1E2D45]' : ''}
-                  `}
-                >
-                  {i + 1}
-                </button>
-              );
-            })}
-          </div>
-          <div className="flex gap-4 text-xs mb-4">
-            <span className="text-green-400">✓ Answered: {answeredCount}</span>
-            <span className="text-yellow-400">★ Marked: {markedCount}</span>
-            <span className="text-gray-400">○ Left: {questions.length - answeredCount}</span>
-          </div>
-          <button
-            onClick={() => handleSubmit(false)}
-            disabled={submitting}
-            className="w-full bg-green-500 hover:bg-green-600 text-white font-bold
-                     py-2.5 rounded-lg transition-colors disabled:opacity-50 text-sm"
-          >
-            {submitting ? 'Submit ho raha hai...' : 'Submit Test'}
-          </button>
-        </div>
-      )}
-
-      {/* ── MAIN CONTENT ── */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* ── QUESTION AREA ── */}
-        <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
+        <div className="flex-1 p-6 overflow-y-auto">
           <div className="max-w-2xl">
-
-            <p className="text-gray-500 text-sm mb-1">
+            <p className="text-gray-500 text-sm mb-2">
               Question {currentIndex + 1} of {questions.length} • {currentQ.marks} marks
             </p>
-
-            {/* Keyboard hint — desktop only */}
-            <p className="hidden md:block text-gray-600 text-xs mb-4">
+            <p className="text-gray-600 text-xs mb-4">
               ⌨️ 1/2/3/4 — option select • M — mark • ← → — navigate • Backspace — clear
             </p>
 
-            <h2 className="text-base sm:text-lg font-semibold mb-5 leading-relaxed">
+            <h2 className="text-lg font-semibold mb-6">
               <MathText text={currentQ.question_text} />
             </h2>
 
-            <div className="space-y-3 mb-6">
+            <div className="space-y-3 mb-8">
               {['A', 'B', 'C', 'D'].map((opt, idx) => (
                 <button
                   key={opt}
@@ -267,7 +237,7 @@ export default function Exam() {
                   className={`w-full text-left px-4 py-3 rounded-lg border transition-colors
                     ${answers[currentQ.id] === opt
                       ? 'bg-orange-400/10 border-orange-400 text-orange-300'
-                      : 'bg-[#111827] border-[#1E2D45] active:border-orange-400/40'}`}
+                      : 'bg-[#111827] border-[#1E2D45] hover:border-orange-400/40'}`}
                 >
                   <span className="font-bold mr-2 text-gray-500">{idx + 1}.</span>
                   <span className="font-bold mr-1">{opt}.</span>
@@ -276,62 +246,47 @@ export default function Exam() {
               ))}
             </div>
 
-            {/* Bottom controls */}
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={clearAnswer}
+            <div className="flex flex-wrap gap-3">
+              <button onClick={clearAnswer}
                 className="bg-[#111827] border border-[#1E2D45] hover:border-gray-400
-                         text-gray-300 px-3 py-2 rounded-lg text-sm transition-colors"
-              >
-                Clear
+                         text-gray-300 px-4 py-2 rounded-lg text-sm transition-colors">
+                Clear Answer
               </button>
-              <button
-                onClick={toggleMark}
-                className={`border px-3 py-2 rounded-lg text-sm transition-colors
+              <button onClick={toggleMark}
+                className={`border px-4 py-2 rounded-lg text-sm transition-colors
                   ${marked[currentQ.id]
                     ? 'bg-yellow-500/10 border-yellow-500/40 text-yellow-400'
-                    : 'bg-[#111827] border-[#1E2D45] text-gray-300'}`}
-              >
-                {marked[currentQ.id] ? '★ Marked' : '☆ Mark'}
+                    : 'bg-[#111827] border-[#1E2D45] text-gray-300 hover:border-yellow-400/40'}`}>
+                {marked[currentQ.id] ? '★ Marked' : '☆ Mark for Review'}
               </button>
               <div className="flex-1" />
-              <button
-                onClick={goPrev}
-                disabled={currentIndex === 0}
+              <button onClick={goPrev} disabled={currentIndex === 0}
                 className="bg-[#111827] border border-[#1E2D45] text-gray-300
-                         px-4 py-2 rounded-lg text-sm disabled:opacity-30 transition-colors"
-              >
+                         px-4 py-2 rounded-lg text-sm disabled:opacity-30 transition-colors">
                 ← Prev
               </button>
-              <button
-                onClick={goNext}
-                disabled={currentIndex === questions.length - 1}
+              <button onClick={goNext} disabled={currentIndex === questions.length - 1}
                 className="bg-orange-400 hover:bg-orange-500 text-[#0A0F1E] font-bold
-                         px-4 py-2 rounded-lg text-sm disabled:opacity-30 transition-colors"
-              >
+                         px-4 py-2 rounded-lg text-sm disabled:opacity-30 transition-colors">
                 Next →
               </button>
             </div>
           </div>
         </div>
 
-        {/* ── DESKTOP SIDEBAR PALETTE ── */}
-        <div className="hidden sm:flex w-72 border-l border-[#1E2D45] p-5 overflow-y-auto bg-[#0D1424] flex-col">
+        <div className="w-72 border-l border-[#1E2D45] p-5 overflow-y-auto bg-[#0D1424]">
           <div className="grid grid-cols-5 gap-2 mb-6">
             {questions.map((q, i) => {
               const status = getStatus(q);
               return (
-                <button
-                  key={q.id}
-                  onClick={() => goTo(i)}
+                <button key={q.id} onClick={() => goTo(i)}
                   className={`h-9 w-9 rounded-md text-sm font-semibold flex items-center justify-center
                     transition-colors
                     ${i === currentIndex ? 'ring-2 ring-orange-400' : ''}
                     ${status === 'answered' ? 'bg-green-500/20 text-green-400 border border-green-500/40' : ''}
                     ${status === 'marked' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40' : ''}
                     ${status === 'unvisited' ? 'bg-[#111827] text-gray-400 border border-[#1E2D45]' : ''}
-                  `}
-                >
+                  `}>
                   {i + 1}
                 </button>
               );
@@ -353,10 +308,12 @@ export default function Exam() {
           <button
             onClick={() => handleSubmit(false)}
             disabled={submitting}
-            className="w-full bg-green-500 hover:bg-green-600 text-white font-bold
-                     py-3 rounded-lg transition-colors disabled:opacity-50"
+            className={`w-full font-bold py-3 rounded-lg transition-colors disabled:opacity-50
+              ${isPreview
+                ? 'bg-orange-400 hover:bg-orange-500 text-[#0A0F1E]'
+                : 'bg-green-500 hover:bg-green-600 text-white'}`}
           >
-            {submitting ? 'Submit ho raha hai...' : 'Submit Test'}
+            {isPreview ? '← Preview Band Karo' : submitting ? 'Submit ho raha hai...' : 'Submit Test'}
           </button>
         </div>
       </div>
