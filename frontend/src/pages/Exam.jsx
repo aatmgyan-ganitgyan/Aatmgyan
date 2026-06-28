@@ -229,19 +229,18 @@ export default function Exam() {
               <MathText text={currentQ.question_text} />
             </h2>
 
-            <div className="space-y-3 mb-8">
-              {['A', 'B', 'C', 'D'].map((opt, idx) => (
+            <div className="grid grid-cols-2 gap-3 mb-8">
+              {['A', 'B', 'C', 'D'].map((opt) => (
                 <button
                   key={opt}
                   onClick={() => selectAnswer(opt)}
-                  className={`w-full text-left px-4 py-3 rounded-lg border transition-colors
+                  className={`text-left px-5 py-4 rounded-lg border transition-colors flex items-center gap-3
                     ${answers[currentQ.id] === opt
                       ? 'bg-orange-400/10 border-orange-400 text-orange-300'
                       : 'bg-[#111827] border-[#1E2D45] hover:border-orange-400/40'}`}
                 >
-                  <span className="font-bold mr-2 text-gray-500">{idx + 1}.</span>
-                  <span className="font-bold mr-1">{opt}.</span>
-                  <MathText text={currentQ[`opt_${opt.toLowerCase()}`]} />
+                  <span className="font-bold text-lg text-gray-400 shrink-0">{opt})</span>
+                  <span className="text-base"><MathText text={currentQ[`opt_${opt.toLowerCase()}`]} /></span>
                 </button>
               ))}
             </div>
