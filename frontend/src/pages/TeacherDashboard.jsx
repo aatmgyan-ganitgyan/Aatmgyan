@@ -136,8 +136,9 @@ export default function TeacherDashboard() {
                     className="w-full bg-[#0A0F1E] border border-[#1E2D45] rounded-lg 
                              px-4 py-3 text-white focus:outline-none focus:border-orange-400"
                   >
-                    <option value={10}>Class 10</option>
-                    <option value={12}>Class 12</option>
+                    {[1,2,3,4,5,6,7,8,9,10,11,12].map(c => (
+                      <option key={c} value={c}>Class {c}</option>
+                    ))}
                   </select>
                 </div>
               </div>
