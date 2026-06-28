@@ -219,9 +219,9 @@ export default function Exam() {
             </p>
             <p className="text-gray-600 text-xs mb-4">
               ⌨️ <p className="text-gray-600 text-xs mb-4">
-                ⌨️ [1=A] [2=B] [3=C] [4=D] &nbsp;•&nbsp; [M = Mark for Review] &nbsp;•&nbsp; [← → Navigate] &nbsp;•&nbsp; [Backspace = Clear]
+                ⌨️ <p className="text-gray-600 text-xs mb-4">
+                ⌨️ [1=A] [2=B] [3=C] [4=D] • [M = Mark for Review] • [← → Navigate] • [Backspace = Clear]
               </p>
-
             <h2 className="text-lg font-semibold mb-6">
               <MathText text={currentQ.question_text} />
             </h2>
