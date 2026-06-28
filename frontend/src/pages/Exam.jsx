@@ -186,7 +186,7 @@ export default function Exam() {
         {/* Mobile: palette toggle button */}
         <button
           onClick={() => setShowPalette(!showPalette)}
-          className="md:hidden flex items-center gap-1 bg-[#111827] border border-[#1E2D45]
+          className="sm:hidden flex items-center gap-1 bg-[#111827] border border-[#1E2D45]
                      text-gray-300 text-xs px-3 py-1.5 rounded-lg"
         >
           📋 {answeredCount}/{questions.length}
@@ -202,7 +202,7 @@ export default function Exam() {
 
       {/* ── MOBILE PALETTE DRAWER ── */}
       {showPalette && (
-        <div className="md:hidden bg-[#0D1424] border-b border-[#1E2D45] px-4 py-4">
+        <div className="sm:hidden bg-[#0D1424] border-b border-[#1E2D45] px-4 py-4">
           <div className="flex flex-wrap gap-2 mb-4">
             {questions.map((q, i) => {
               const status = getStatus(q);
@@ -316,7 +316,7 @@ export default function Exam() {
         </div>
 
         {/* ── DESKTOP SIDEBAR PALETTE ── */}
-        <div className="hidden md:flex w-72 border-l border-[#1E2D45] p-5 overflow-y-auto bg-[#0D1424] flex-col">
+        <div className="hidden sm:flex w-72 border-l border-[#1E2D45] p-5 overflow-y-auto bg-[#0D1424] flex-col">
           <div className="grid grid-cols-5 gap-2 mb-6">
             {questions.map((q, i) => {
               const status = getStatus(q);
