@@ -101,7 +101,7 @@ export default function Exam() {
         selected_opt: answers[q.id] || null,
       }));
       const res = await API.post('/attempts/submit', { attempt_id: attemptId, responses });
-      navigate(`/result/${attemptId}`, { state: res.data.result });
+      navigate(`/result/${attemptId}`, { state: { result: res.data.result, gamification: res.data.gamification } });
     } catch (err) {
       setError(err.response?.data?.error || 'Submit nahi hua!');
       setSubmitting(false);

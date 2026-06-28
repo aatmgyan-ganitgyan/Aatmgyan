@@ -61,6 +61,7 @@ router.post('/start', verifyToken, async (req, res) => {
 router.post('/submit', verifyToken, async (req, res) => {
   try {
     const { attempt_id, responses } = req.body;
+    const student_id = req.user.id;
 
     const attemptRes = await pool.query(
       `SELECT a.*, t.negative_marking FROM attempts a 
@@ -71,16 +72,12 @@ router.post('/submit', verifyToken, async (req, res) => {
       return res.status(404).json({ error: 'Attempt nahi mila!' });
     const attempt = attemptRes.rows[0];
 
-    // Pehle purane responses delete karo (agar koi hai)
     await pool.query('DELETE FROM responses WHERE attempt_id = $1', [attempt_id]);
 
     let score = 0, correct = 0, wrong = 0, skipped = 0;
 
     for (const r of responses) {
-      const qRes = await pool.query(
-        'SELECT * FROM questions WHERE id = $1',
-        [r.question_id]
-      );
+      const qRes = await pool.query('SELECT * FROM questions WHERE id = $1', [r.question_id]);
       if (qRes.rows.length === 0) continue;
       const q = qRes.rows[0];
 
@@ -117,9 +114,82 @@ router.post('/submit', verifyToken, async (req, res) => {
       [score, attempt_id]
     );
 
+    // ── XP + Streak + Badges ─────────────────────
+    const xpEarned = correct * 10 + (percentage === 100 ? 50 : 0);
+
+    // Streak check
+    const userRes = await pool.query('SELECT * FROM users WHERE id = $1', [student_id]);
+    const user = userRes.rows[0];
+    const today = new Date().toISOString().split('T')[0];
+    const lastDate = user.last_attempt_date ? user.last_attempt_date.toISOString?.().split('T')[0] || user.last_attempt_date : null;
+
+    let newStreak = 1;
+    if (lastDate) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      if (lastDate === yesterdayStr) {
+        newStreak = (user.streak || 0) + 1;
+      } else if (lastDate === today) {
+        newStreak = user.streak || 1;
+      }
+    }
+
+    await pool.query(
+      `UPDATE users SET xp = xp + $1, streak = $2, last_attempt_date = $3 WHERE id = $4`,
+      [xpEarned, newStreak, today, student_id]
+    );
+
+    // ── Badges ───────────────────────────────────
+    const newBadges = [];
+
+    // Pehla test badge
+    const attemptCount = await pool.query(
+      `SELECT COUNT(*) FROM attempts WHERE student_id = $1 AND status = 'completed'`,
+      [student_id]
+    );
+    if (parseInt(attemptCount.rows[0].count) === 1) {
+      await pool.query(
+        `INSERT INTO badges (user_id, badge_type) VALUES ($1, 'first_test')`,
+        [student_id]
+      );
+      newBadges.push('first_test');
+    }
+
+    // Perfect score badge
+    if (percentage === 100) {
+      const alreadyHas = await pool.query(
+        `SELECT id FROM badges WHERE user_id = $1 AND badge_type = 'perfect_score'`,
+        [student_id]
+      );
+      if (alreadyHas.rows.length === 0) {
+        await pool.query(
+          `INSERT INTO badges (user_id, badge_type) VALUES ($1, 'perfect_score')`,
+          [student_id]
+        );
+        newBadges.push('perfect_score');
+      }
+    }
+
+    // 7 day streak badge
+    if (newStreak >= 7) {
+      const alreadyHas = await pool.query(
+        `SELECT id FROM badges WHERE user_id = $1 AND badge_type = 'week_streak'`,
+        [student_id]
+      );
+      if (alreadyHas.rows.length === 0) {
+        await pool.query(
+          `INSERT INTO badges (user_id, badge_type) VALUES ($1, 'week_streak')`,
+          [student_id]
+        );
+        newBadges.push('week_streak');
+      }
+    }
+
     res.json({
       message: 'Test submit ho gaya!',
-      result: { score, correct, wrong, skipped, total, percentage }
+      result: { score, correct, wrong, skipped, total, percentage },
+      gamification: { xpEarned, newStreak, newBadges }
     });
   } catch (error) {
     console.error('Submit error:', error);
