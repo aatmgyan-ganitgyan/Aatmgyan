@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import API from '../api/axios';
+import MathText from '../components/MathText';
 
 export default function Exam() {
   const { testId } = useParams();
@@ -107,7 +108,6 @@ export default function Exam() {
     }
   }, [answers, questions, attemptId, navigate]);
 
-  // ── Keyboard Navigation ──────────────────────
   useEffect(() => {
     const handleKey = (e) => {
       if (!currentQ) return;
@@ -193,12 +193,13 @@ export default function Exam() {
               Question {currentIndex + 1} of {questions.length} • {currentQ.marks} marks
             </p>
 
-            {/* Keyboard hint */}
             <p className="text-gray-600 text-xs mb-4">
               ⌨️ 1/2/3/4 — option select • M — mark • ← → — navigate • Backspace — clear
             </p>
 
-            <h2 className="text-lg font-semibold mb-6">{currentQ.question_text}</h2>
+            <h2 className="text-lg font-semibold mb-6">
+              <MathText text={currentQ.question_text} />
+            </h2>
 
             <div className="space-y-3 mb-8">
               {['A', 'B', 'C', 'D'].map((opt, idx) => (
@@ -212,7 +213,7 @@ export default function Exam() {
                 >
                   <span className="font-bold mr-2 text-gray-500">{idx + 1}.</span>
                   <span className="font-bold mr-1">{opt}.</span>
-                  {currentQ[`opt_${opt.toLowerCase()}`]}
+                  <MathText text={currentQ[`opt_${opt.toLowerCase()}`]} />
                 </button>
               ))}
             </div>
