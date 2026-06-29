@@ -70,7 +70,24 @@ export default function Result() {
     doc.setFontSize(13);
     doc.setTextColor(251, 146, 60);
     doc.text('Answer Review', 20, 94);
-
+const cleanMath = (text) => {
+  if (!text) return '';
+  return text
+    .replace(/\$([^$]+)\$/g, '$1')
+    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)')
+    .replace(/\\sqrt\{([^}]+)\}/g, 'sqrt($1)')
+    .replace(/\\int/g, '∫')
+    .replace(/\\lim/g, 'lim')
+    .replace(/\\sum/g, '∑')
+    .replace(/\\infty/g, '∞')
+    .replace(/\\pi/g, 'π')
+    .replace(/\\alpha/g, 'α')
+    .replace(/\\beta/g, 'β')
+    .replace(/\\theta/g, 'θ')
+    .replace(/\^(\{[^}]+\}|\w)/g, '^$1')
+    .replace(/\{([^}]+)\}/g, '$1')
+    .replace(/\\_/g, '_');
+};
     let y = 104;
     reviewData.forEach((r, index) => {
       if (y > 260) {
@@ -80,19 +97,19 @@ export default function Result() {
 
       doc.setFontSize(10);
       doc.setTextColor(0, 0, 0);
-      const qLines = doc.splitTextToSize(`Q${index + 1}. ${r.question_text}`, 170);
+      const qLines = doc.splitTextToSize(`Q${index + 1}. ${cleanMath(r.question_text)}`, 170);
       doc.text(qLines, 20, y);
       y += qLines.length * 5 + 3;
 
       const selectedText = r.selected_opt
-        ? `Tumhara Jawab: ${r.selected_opt}. ${r[`opt_${r.selected_opt.toLowerCase()}`]}`
+        ? `Tumhara Jawab: ${r.selected_opt}. ${cleanMath(r[`opt_${r.selected_opt.toLowerCase()}`])}`
         : 'Tumhara Jawab: Skip';
       r.is_correct ? doc.setTextColor(34, 197, 94) : doc.setTextColor(239, 68, 68);
       doc.text(selectedText, 25, y);
       y += 6;
 
       doc.setTextColor(34, 197, 94);
-      doc.text(`Sahi Jawab: ${r.correct_opt}. ${r[`opt_${r.correct_opt.toLowerCase()}`]}`, 25, y);
+      doc.text(`Sahi Jawab: ${r.correct_opt}. ${cleanMath(r[`opt_${r.correct_opt.toLowerCase()}`])}`, 25, y);
       y += 6;
 
       if (r.explanation) {
