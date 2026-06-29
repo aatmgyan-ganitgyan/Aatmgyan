@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import jsPDF from 'jspdf';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import API from '../api/axios';
 
@@ -15,6 +16,94 @@ export default function Result() {
   const result = location.state;
 
   const [review, setReview] = useState(null);
+  const downloadPDF = () => {
+  const doc = new jsPDF();
+  const { score, correct, wrong, skipped, total, percentage } = result.result || result;
+  
+  // Header
+  doc.setFontSize(20);
+  doc.setTextColor(251, 146, 60);
+  doc.text('Aatmgyan', 105, 20, { align: 'center' });
+  
+  doc.setFontSize(12);
+  doc.setTextColor(100, 100, 100);
+  doc.text('aatmgyan.vercel.app', 105, 28, { align: 'center' });
+  
+  // Divider
+  doc.setDrawColor(30, 45, 69);
+  doc.line(20, 32, 190, 32);
+  
+  // Score
+  doc.setFontSize(16);
+  doc.setTextColor(0, 0, 0);
+  doc.text(`Final Score: ${score}`, 105, 45, { align: 'center' });
+  doc.setFontSize(13);
+  doc.setTextColor(100, 100, 100);
+  doc.text(`Percentage: ${percentage}%`, 105, 54, { align: 'center' });
+  
+  // Stats
+  doc.setFontSize(12);
+  doc.setTextColor(34, 197, 94);
+  doc.text(`Correct: ${correct}`, 50, 68);
+  doc.setTextColor(239, 68, 68);
+  doc.text(`Wrong: ${wrong}`, 105, 68);
+  doc.setTextColor(100, 100, 100);
+  doc.text(`Skipped: ${skipped}`, 160, 68);
+  
+  doc.setTextColor(0,0,0);
+  doc.text(`Total Questions: ${total}`, 105, 80, { align: 'center' });
+  
+  // Review section
+  if (review && review.length > 0) {
+    doc.line(20, 86, 190, 86);
+    doc.setFontSize(13);
+    doc.setTextColor(251, 146, 60);
+    doc.text('Answer Review', 20, 94);
+    
+    let y = 104;
+    review.forEach((r, index) => {
+      if (y > 260) {
+        doc.addPage();
+        y = 20;
+      }
+      
+      // Question
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      const qLines = doc.splitTextToSize(`Q${index + 1}. ${r.question_text}`, 170);
+      doc.text(qLines, 20, y);
+      y += qLines.length * 5 + 3;
+      
+      // Your answer
+      const selectedText = r.selected_opt ? `Tumhara Jawab: ${r.selected_opt}. ${r[`opt_${r.selected_opt.toLowerCase()}`]}` : 'Tumhara Jawab: Skip';
+      r.is_correct ? doc.setTextColor(34, 197, 94) : doc.setTextColor(239, 68, 68);
+      doc.text(selectedText, 25, y);
+      y += 6;
+      
+      // Correct answer
+      doc.setTextColor(34, 197, 94);
+      doc.text(`Sahi Jawab: ${r.correct_opt}. ${r[`opt_${r.correct_opt.toLowerCase()}`]}`, 25, y);
+      y += 6;
+      
+      // Explanation
+      if (r.explanation) {
+        doc.setTextColor(100, 100, 100);
+        const expLines = doc.splitTextToSize(`Explanation: ${r.explanation}`, 160);
+        doc.text(expLines, 25, y);
+        y += expLines.length * 5 + 3;
+      }
+      
+      y += 4;
+    });
+  }
+  
+  // Footer
+  doc.setFontSize(9);
+  doc.setTextColor(150, 150, 150);
+  doc.text('Jaano. Seekho. Badho. 🪔', 105, 285, { align: 'center' });
+  
+  doc.save(`Aatmgyan_Result.pdf`);
+};
   const [loadingReview, setLoadingReview] = useState(false);
   const [showReview, setShowReview] = useState(false);
 
@@ -138,7 +227,13 @@ export default function Result() {
                    font-bold py-3 rounded-lg transition-colors mb-8"
         >
           Dashboard pe Jao →
-        </button>
+        </button><button
+  onClick={downloadPDF}
+  className="w-full bg-blue-500 hover:bg-blue-600 text-white
+           font-bold py-3 rounded-lg transition-colors mb-8"
+>
+  📄 Result PDF Download Karo
+</button>
 
         {/* Review Section */}
         {showReview && review && (
