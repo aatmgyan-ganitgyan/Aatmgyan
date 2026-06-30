@@ -111,12 +111,45 @@ router.get('/my-tests', verifyToken, async (req, res) => {
 router.get('/available', verifyToken, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT t.*, u.name as teacher_name FROM tests t 
+      `SELECT t.*, u.name as teacher_name,
+        (t.created_at > NOW() - INTERVAL '3 days') as is_new
+       FROM tests t 
        JOIN users u ON t.created_by = u.id
-       WHERE t.is_published = true ORDER BY t.created_at DESC`
+       WHERE t.is_published = true AND t.is_hidden = false
+       ORDER BY t.created_at DESC`
     );
     res.json({ tests: result.rows });
   } catch (error) {
+    res.status(500).json({ error: 'Server error aaya!' });
+  }
+});
+
+router.put('/:testId/hide', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Sirf teacher hide kar sakta hai!' });
+    }
+    const { testId } = req.params;
+    const { hidden } = req.body;
+    await pool.query('UPDATE tests SET is_hidden = $1 WHERE id = $2', [hidden, testId]);
+    res.json({ message: hidden ? 'Test hide ho gaya!' : 'Test wapas dikhne lagega!' });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error aaya!' });
+  }
+});
+
+router.delete('/:testId', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Sirf teacher delete kar sakta hai!' });
+    }
+    const { testId } = req.params;
+    await pool.query('DELETE FROM questions WHERE test_id = $1', [testId]);
+    await pool.query('DELETE FROM attempts WHERE test_id = $1', [testId]);
+    await pool.query('DELETE FROM tests WHERE id = $1', [testId]);
+    res.json({ message: 'Test permanently delete ho gaya!' });
+  } catch (error) {
+    console.error('Delete test error:', error);
     res.status(500).json({ error: 'Server error aaya!' });
   }
 });

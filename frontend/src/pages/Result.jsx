@@ -2,6 +2,7 @@ import { useState } from 'react';
 import jsPDF from 'jspdf';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import API from '../api/axios';
+import MathText from '../components/MathText';
 
 const BADGE_INFO = {
   first_test: { emoji: '🎯', label: 'First Test!', desc: 'Pehla test diya!' },
@@ -263,7 +264,7 @@ export default function Result() {
                 className={`bg-[#111827] border rounded-2xl p-5
                   ${r.is_correct ? 'border-green-500/30' : r.selected_opt ? 'border-red-500/30' : 'border-[#1E2D45]'}`}>
                 <div className="flex justify-between items-start mb-3">
-                  <p className="font-semibold flex-1">Q{index + 1}. {r.question_text}</p>
+                  <p className="font-semibold flex-1">Q{index + 1}. <MathText text={r.question_text} /></p>
                   <span className={`text-xs px-2 py-1 rounded-full font-semibold ml-2 shrink-0
                     ${r.is_correct ? 'bg-green-500/10 text-green-400'
                       : r.selected_opt ? 'bg-red-500/10 text-red-400'
@@ -281,7 +282,7 @@ export default function Result() {
                         className={isCorrectOpt ? 'text-green-400 font-semibold'
                           : isSelectedOpt ? 'text-red-400 font-semibold'
                           : 'text-gray-500'}>
-                        {optLetter}. {r[`opt_${letter}`]}
+                        {optLetter}. <MathText text={r[`opt_${letter}`]} />
                         {isCorrectOpt && ' ✓'}
                         {isSelectedOpt && !isCorrectOpt && ' ✗ (tumne yeh chuna)'}
                       </p>
@@ -290,7 +291,7 @@ export default function Result() {
                 </div>
                 {r.explanation && (
                   <div className="mt-3 pt-3 border-t border-[#1E2D45]">
-                    <p className="text-gray-400 text-xs">💡 {r.explanation}</p>
+                    <p className="text-gray-400 text-xs">💡 <MathText text={r.explanation} /></p>
                   </div>
                 )}
               </div>
