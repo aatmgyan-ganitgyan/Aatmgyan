@@ -127,7 +127,7 @@ export default function Result() {
 
         if (r.explanation) {
           doc.setTextColor(100, 100, 100);
-          const expLines = doc.splitTextToSize(`Explanation: ${r.explanation}`, 160);
+          const expLines = doc.splitTextToSize(`Explanation: ${cleanMath(r.explanation)}`, 160);
           doc.text(expLines, 25, y);
           y += expLines.length * 5 + 3;
         }
