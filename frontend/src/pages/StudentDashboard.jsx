@@ -10,6 +10,7 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [myXP, setMyXP] = useState(0);
   const [myStreak, setMyStreak] = useState(0);
+  const [classFilter, setClassFilter] = useState(user.class || 'all');
 
   const fetchTests = async () => {
     try {
@@ -41,6 +42,9 @@ export default function StudentDashboard() {
     localStorage.removeItem('user');
     navigate('/login');
   };
+
+  const availableClasses = [...new Set(tests.map((t) => t.class))].sort((a, b) => a - b);
+  const filteredTests = classFilter === 'all' ? tests : tests.filter((t) => String(t.class) === String(classFilter));
 
   return (
     <div className="min-h-screen bg-[#0A0F1E] text-white px-6 py-8">
@@ -91,26 +95,50 @@ export default function StudentDashboard() {
           </div>
           <div className="h-8 w-px bg-[#1E2D45]" />
           <div className="text-center">
-            <p className="text-2xl font-bold text-blue-400">{tests.length}</p>
+            <p className="text-2xl font-bold text-blue-400">{filteredTests.length}</p>
             <p className="text-gray-500 text-xs mt-1">Tests Available</p>
           </div>
         </div>
 
-        <h2 className="text-2xl font-bold mb-6">Available Tests</h2>
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
+          <h2 className="text-2xl font-bold">Available Tests</h2>
+
+          {/* Class Filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500 text-sm">Class:</span>
+            <select
+              value={classFilter}
+              onChange={(e) => setClassFilter(e.target.value)}
+              className="bg-[#111827] border border-[#1E2D45] text-gray-200 text-sm
+                       px-3 py-1.5 rounded-lg focus:outline-none focus:border-orange-400"
+            >
+              <option value="all">Sabhi Classes</option>
+              {availableClasses.map((c) => (
+                <option key={c} value={c}>Class {c}</option>
+              ))}
+            </select>
+          </div>
+        </div>
 
         {loading && <p className="text-gray-500">Loading...</p>}
 
-        {!loading && tests.length === 0 && (
+        {!loading && filteredTests.length === 0 && (
           <div className="bg-[#111827] border border-[#1E2D45] rounded-2xl p-8 text-center">
-            <p className="text-gray-500">Abhi koi test available nahi hai. Teacher se poocho! 🪔</p>
+            <p className="text-gray-500">Is class ke liye abhi koi test available nahi hai. 🪔</p>
           </div>
         )}
 
         <div className="grid gap-4 sm:grid-cols-2">
-          {tests.map((test) => (
+          {filteredTests.map((test) => (
             <div key={test.id}
               className="bg-[#111827] border border-[#1E2D45] rounded-2xl p-6
-                       hover:border-orange-400/40 transition-colors">
+                       hover:border-orange-400/40 transition-colors relative">
+              {test.is_new && (
+                <span className="absolute top-3 right-3 bg-orange-400 text-[#0A0F1E]
+                               text-xs font-bold px-2 py-0.5 rounded-full">
+                  NEW
+                </span>
+              )}
               <h3 className="font-bold text-lg mb-1">{test.title}</h3>
               <p className="text-gray-500 text-sm mb-1">
                 {test.subject} • Class {test.class}

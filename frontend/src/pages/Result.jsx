@@ -9,6 +9,25 @@ const BADGE_INFO = {
   week_streak: { emoji: '🔥', label: '7 Day Streak!', desc: '7 din lagaatar test diya!' },
 };
 
+const cleanMath = (text) => {
+  if (!text) return '';
+  return text
+    .replace(/\$([^$]+)\$/g, '$1')
+    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)')
+    .replace(/\\sqrt\{([^}]+)\}/g, 'sqrt($1)')
+    .replace(/\\int/g, '∫')
+    .replace(/\\lim/g, 'lim')
+    .replace(/\\sum/g, '∑')
+    .replace(/\\infty/g, '∞')
+    .replace(/\\pi/g, 'π')
+    .replace(/\\alpha/g, 'α')
+    .replace(/\\beta/g, 'β')
+    .replace(/\\theta/g, 'θ')
+    .replace(/\^(\{[^}]+\}|\w)/g, '^$1')
+    .replace(/\{([^}]+)\}/g, '$1')
+    .replace(/\\_/g, '_');
+};
+
 export default function Result() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -19,8 +38,20 @@ export default function Result() {
   const [loadingReview, setLoadingReview] = useState(false);
   const [showReview, setShowReview] = useState(false);
 
+  const fetchReview = async () => {
+    if (review) { setShowReview(!showReview); return; }
+    setLoadingReview(true);
+    try {
+      const res = await API.get(`/attempts/${attemptId}/result`);
+      setReview(res.data.responses);
+      setShowReview(true);
+    } catch (err) {
+      console.error(err);
+    }
+    setLoadingReview(false);
+  };
+
   const downloadPDF = async () => {
-    // Pehle answers load karo agar nahi hain
     let reviewData = review;
     if (!reviewData) {
       try {
@@ -35,7 +66,6 @@ export default function Result() {
     const doc = new jsPDF();
     const { score, correct, wrong, skipped, total, percentage } = result.result || result;
 
-    // Header
     doc.setFontSize(20);
     doc.setTextColor(251, 146, 60);
     doc.text('Aatmgyan', 105, 20, { align: 'center' });
@@ -47,7 +77,6 @@ export default function Result() {
     doc.setDrawColor(30, 45, 69);
     doc.line(20, 32, 190, 32);
 
-    // Score
     doc.setFontSize(16);
     doc.setTextColor(0, 0, 0);
     doc.text(`Final Score: ${score}`, 105, 45, { align: 'center' });
@@ -55,7 +84,6 @@ export default function Result() {
     doc.setTextColor(100, 100, 100);
     doc.text(`Percentage: ${percentage}%`, 105, 54, { align: 'center' });
 
-    // Stats
     doc.setFontSize(12);
     doc.setTextColor(34, 197, 94);
     doc.text(`Correct: ${correct}`, 50, 68);
@@ -67,26 +95,6 @@ export default function Result() {
     doc.setTextColor(0, 0, 0);
     doc.text(`Total Questions: ${total}`, 105, 80, { align: 'center' });
 
-    const cleanMath = (text) => {
-      if (!text) return '';
-      return text
-        .replace(/\$([^$]+)\$/g, '$1')
-        .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)')
-        .replace(/\\sqrt\{([^}]+)\}/g, 'sqrt($1)')
-        .replace(/\\int/g, '∫')
-        .replace(/\\lim/g, 'lim')
-        .replace(/\\sum/g, '∑')
-        .replace(/\\infty/g, '∞')
-        .replace(/\\pi/g, 'π')
-        .replace(/\\alpha/g, 'α')
-        .replace(/\\beta/g, 'β')
-        .replace(/\\theta/g, 'θ')
-        .replace(/\^(\{[^}]+\}|\w)/g, '^$1')
-        .replace(/\{([^}]+)\}/g, '$1')
-        .replace(/\\_/g, '_');
-    };
-
-    // Review section
     if (reviewData && reviewData.length > 0) {
       doc.line(20, 86, 190, 86);
       doc.setFontSize(13);
@@ -128,25 +136,11 @@ export default function Result() {
       });
     }
 
-    // Footer
     doc.setFontSize(9);
     doc.setTextColor(150, 150, 150);
-    doc.text('Jaano. Seekho. Badho. 🪔', 105, 285, { align: 'center' });
+    doc.text('Jaano. Seekho. Badho.', 105, 285, { align: 'center' });
 
     doc.save(`Aatmgyan_Result.pdf`);
-  };
-
-  const fetchReview = async () => {
-    if (review) { setShowReview(!showReview); return; }
-    setLoadingReview(true);
-    try {
-      const res = await API.get(`/attempts/${attemptId}/result`);
-      setReview(res.data.responses);
-      setShowReview(true);
-    } catch (err) {
-      console.error(err);
-    }
-    setLoadingReview(false);
   };
 
   if (!result) {
@@ -174,14 +168,12 @@ export default function Result() {
           <p className="text-gray-500 text-sm">Tumhara result yeh hai</p>
         </div>
 
-        {/* Score Card */}
         <div className="bg-[#111827] border border-[#1E2D45] rounded-2xl p-8 text-center mb-4">
           <p className="text-gray-400 text-sm mb-1">Final Score</p>
           <p className="text-5xl font-bold text-orange-400 mb-2">{score}</p>
           <p className="text-gray-500 text-sm">{percentage}% Score</p>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mb-4">
           <div className="bg-[#111827] border border-[#1E2D45] rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-green-400">{correct}</p>
@@ -197,7 +189,6 @@ export default function Result() {
           </div>
         </div>
 
-        {/* XP + Streak */}
         {gamification && (
           <div className="bg-[#111827] border border-[#1E2D45] rounded-2xl p-5 mb-4">
             <div className="flex justify-around">
@@ -215,7 +206,6 @@ export default function Result() {
           </div>
         )}
 
-        {/* New Badges */}
         {gamification?.newBadges?.length > 0 && (
           <div className="bg-[#111827] border border-yellow-500/30 rounded-2xl p-5 mb-4">
             <p className="text-yellow-400 font-bold text-sm mb-3">🏅 Naya Badge Mila!</p>
@@ -253,7 +243,7 @@ export default function Result() {
         <button
           onClick={() => navigate('/student')}
           className="w-full bg-orange-400 hover:bg-orange-500 text-[#0A0F1E]
-                   font-bold py-3 rounded-lg transition-colors mb-8"
+                   font-bold py-3 rounded-lg transition-colors mb-3"
         >
           Dashboard pe Jao →
         </button>
@@ -266,7 +256,6 @@ export default function Result() {
           📄 Result PDF Download Karo
         </button>
 
-        {/* Review Section */}
         {showReview && review && (
           <div className="space-y-4">
             {review.map((r, index) => (
