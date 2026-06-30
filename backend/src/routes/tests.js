@@ -110,16 +110,28 @@ router.get('/my-tests', verifyToken, async (req, res) => {
 
 router.get('/available', verifyToken, async (req, res) => {
   try {
+    const student_id = req.user.id;
+
+    // Student ki class fetch karo
+    const userRes = await pool.query('SELECT class FROM users WHERE id = $1', [student_id]);
+    const studentClass = userRes.rows[0]?.class;
+
     const result = await pool.query(
       `SELECT t.*, u.name as teacher_name,
-        (t.created_at > NOW() - INTERVAL '3 days') as is_new
+        (t.created_at > NOW() - INTERVAL '3 days') as is_new,
+        CASE WHEN a.status = 'completed' THEN true ELSE false END as is_attempted,
+        a.id as attempt_id
        FROM tests t 
        JOIN users u ON t.created_by = u.id
+       LEFT JOIN attempts a ON a.test_id = t.id AND a.student_id = $1 AND a.status = 'completed'
        WHERE t.is_published = true AND t.is_hidden = false
-       ORDER BY t.created_at DESC`
+         AND ($2::text IS NULL OR t.class::text = $2::text)
+       ORDER BY t.created_at DESC`,
+      [student_id, studentClass ? String(studentClass) : null]
     );
     res.json({ tests: result.rows });
   } catch (error) {
+    console.error('Available tests error:', error);
     res.status(500).json({ error: 'Server error aaya!' });
   }
 });
