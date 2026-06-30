@@ -13,9 +13,24 @@ const BADGE_INFO = {
 const cleanMath = (text) => {
   if (!text) return '';
   return text
+    .replace(/\$\$([^$]+)\$\$/g, '$1')
     .replace(/\$([^$]+)\$/g, '$1')
+    .replace(/\\left\(/g, '(')
+    .replace(/\\right\)/g, ')')
+    .replace(/\\left\[/g, '[')
+    .replace(/\\right\]/g, ']')
+    .replace(/\\left\|/g, '|')
+    .replace(/\\right\|/g, '|')
+    .replace(/\\times/g, '×')
+    .replace(/\\div/g, '÷')
+    .replace(/\\pm/g, '±')
+    .replace(/\\cdot/g, '·')
+    .replace(/\\leq/g, '≤')
+    .replace(/\\geq/g, '≥')
+    .replace(/\\neq/g, '≠')
     .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)')
-    .replace(/\\sqrt\{([^}]+)\}/g, 'sqrt($1)')
+    .replace(/\\sqrt\{([^}]+)\}/g, '√($1)')
+    .replace(/\\boxed\{([^}]+)\}/g, '[$1]')
     .replace(/\\int/g, '∫')
     .replace(/\\lim/g, 'lim')
     .replace(/\\sum/g, '∑')
@@ -23,10 +38,20 @@ const cleanMath = (text) => {
     .replace(/\\pi/g, 'π')
     .replace(/\\alpha/g, 'α')
     .replace(/\\beta/g, 'β')
+    .replace(/\\gamma/g, 'γ')
     .replace(/\\theta/g, 'θ')
-    .replace(/\^(\{[^}]+\}|\w)/g, '^$1')
+    .replace(/\\Delta/g, 'Δ')
+    .replace(/\\delta/g, 'δ')
+    .replace(/\\lambda/g, 'λ')
+    .replace(/\^\{([^}]+)\}/g, '^($1)')
+    .replace(/\_\{([^}]+)\}/g, '_($1)')
+    .replace(/\^(\w)/g, '^$1')
     .replace(/\{([^}]+)\}/g, '$1')
-    .replace(/\\_/g, '_');
+    .replace(/[{}]/g, '')
+    .replace(/\\\\/g, ' ')
+    .replace(/\\text\{([^}]*)\}/g, '$1')
+    .replace(/\\_/g, '_')
+    .trim();
 };
 
 export default function Result() {
