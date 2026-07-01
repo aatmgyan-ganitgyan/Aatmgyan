@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import API from '../api/axios';
 
 export default function Register() {
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'student' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'student', class: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -91,6 +91,24 @@ export default function Register() {
                 </button>
               </div>
             </div>
+
+            {form.role === 'student' && (
+              <div>
+                <label className="text-gray-400 text-sm mb-1 block">Class</label>
+                <select
+                  value={form.class}
+                  onChange={(e) => setForm({ ...form, class: e.target.value })}
+                  className="w-full bg-[#0A0F1E] border border-[#1E2D45] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-orange-400 transition-colors"
+                  required
+                >
+                  <option value="">Class chuniye</option>
+                  {[6, 7, 8, 9, 10, 11, 12].map((c) => (
+                    <option key={c} value={c}>Class {c}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <button type="submit" disabled={loading}
               className="w-full bg-orange-400 hover:bg-orange-500 text-[#0A0F1E] font-bold py-3 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed mt-2">
               {loading ? 'Account ban raha hai...' : 'Register Karo →'}
